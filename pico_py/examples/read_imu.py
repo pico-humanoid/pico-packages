@@ -5,7 +5,7 @@ import sys
 
 from serial import SerialException
 
-from pico_py.imu import Imu
+from pico_py.imu import Imu, cmp10a
 
 
 def main() -> int:
@@ -15,7 +15,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        with Imu(port=args.port, baudrate=args.baudrate) as imu:
+        with Imu(port=args.port, baudrate=args.baudrate, protocol=cmp10a) as imu:
             while True:
                 print(imu.read_data(), flush=True)
     except KeyboardInterrupt:

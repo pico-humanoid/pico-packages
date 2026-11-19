@@ -84,7 +84,7 @@ def decode_frame(frame: bytes) -> Measurement:
     return MagneticField(x, y, z, extra / 100)
 
 
-def _pop_frame(buffer: bytearray) -> bytes | None:
+def extract_frame(buffer: bytearray) -> bytes | None:
     """Consume one valid frame, retaining unread bytes and incomplete frames."""
     while True:
         start = buffer.find(_HEADER)

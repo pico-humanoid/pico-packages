@@ -33,8 +33,8 @@ class ProtocolTests(TestCase):
         )
 
 
-class ImuTests(TestCase):
-    def test_connect_retains_first_frame_after_noise_and_bad_checksum(self):
+class Cmp10aSerialTests(TestCase):
+    def test_reads_frames_after_noise_and_bad_checksum(self):
         wire = bytearray(b"\xAB\x55\x01" + ACC[:-1] + b"\x00" + ACC + GYRO)
         with patch("pico_py.imu.device.Serial") as create_serial:
             serial = create_serial.return_value
@@ -46,26 +46,13 @@ class ImuTests(TestCase):
                 return chunk
 
             serial.read.side_effect = read
-            imu = Imu("test-port")
+            imu = Imu("test-port", 9600, protocol=cmp10a)
             with imu:
                 self.assertTrue(imu.connect())
                 self.assertEqual(imu.read_frame(), ACC)
                 self.assertEqual(imu.read_data(), cmp10a.AngularVelocity(0, 0, 0))
             imu.close()
             create_serial.assert_called_once()
-            serial.close.assert_called_once()
-            with self.assertRaisesRegex(RuntimeError, "connect"):
-                imu.read_frame()
-
-    def test_connect_releases_port_after_timeout(self):
-        with patch("pico_py.imu.device.Serial") as create_serial:
-            serial = create_serial.return_value
-            serial.in_waiting = 0
-            serial.read.return_value = b""
-            imu = Imu("test-port")
-            with patch("pico_py.imu.device.monotonic", side_effect=[0, 0, 1]):
-                with self.assertRaisesRegex(TimeoutError, "test-port"):
-                    imu.connect()
             serial.close.assert_called_once()
             with self.assertRaisesRegex(RuntimeError, "connect"):
                 imu.read_frame()

@@ -2,5 +2,6 @@
 
 from . import cmp10a
 from .device import Imu
+from .protocol import ImuProtocol
 
-__all__ = ["Imu", "cmp10a"]
+__all__ = ["Imu", "ImuProtocol", "cmp10a"]
