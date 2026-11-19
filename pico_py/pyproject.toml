@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pico_py"
+version = "0.1.0"
+description = "Python hardware access for Pico Humanoid, starting with the CMP10A IMU"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pyserial>=3.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
