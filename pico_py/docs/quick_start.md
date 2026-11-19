@@ -29,3 +29,14 @@
 |:---:|:---:|:---:|
 |`imu`|惯导传感器的连接与读取|[imu-APIs](./api.md#imu-模块)|
 |`motor`|关节电机的通讯与控制|[motor-APIs](./api.md#motor-包)|
+
+## 示例程序
+
+`examples/` 下提供了示例程序，供用户编写代码参考，或用于快速预览效果。
+
+- 读取 IMU 数据：
+    - 确保硬件设备已正确连接
+    - 再运行示例程序：
+      ```bash
+      python3 pico_py/examples/read_imu.py /dev/ttyUSB0 --baudrate 9600 --print-hz 5
+      ```

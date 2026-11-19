@@ -4,6 +4,6 @@
 
 ## 文档
 
-- [概述](../docs/overview.md)
-- [快速开始](../docs/quick_start.md)
-- [API 参考](../docs/api.md)
+- [概述](./docs/overview.md)
+- [快速开始](./docs/quick_start.md)
+- [API 参考](./docs/api.md)
