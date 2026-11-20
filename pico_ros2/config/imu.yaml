@@ -1,0 +1,9 @@
+imu_driver:
+  ros__parameters:
+    model: cmp10a
+    port: /dev/ttyUSB0
+    # If the device streams at a different rate, the node changes and saves it.
+    baudrate: 9600
+    frame_id: imu_link
+    publish_mag: true
+    publish_temperature: true
