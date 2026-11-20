@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import partial
 from math import cos, radians, sin
 import os
 import sys
@@ -20,6 +21,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, MagneticField, Temperature
+from std_srvs.srv import Trigger
 
 
 _SCAN_RATES = (9600, 115200, 19200, 38400, 57600, 230400, 4800)
@@ -100,14 +102,35 @@ class ImuDriver(Node):
     def run(self) -> None:
         """Read and publish frames until ROS shuts down or the port fails."""
         with self._connect() as imu:
-            while self.context.ok():
-                try:
-                    data = imu.read_data(timeout=_READ_TIMEOUT_S)
-                except TimeoutError:
-                    pass
-                else:
-                    self._handle_sample(_Sample(data, self.get_clock().now(), monotonic()))
-                rclpy.spin_once(self, timeout_sec=0.0)
+            calibration_service = self.create_service(
+                Trigger, 'imu/calibrate_accel', partial(self._calibrate_accel, imu)
+            )
+            try:
+                while self.context.ok():
+                    try:
+                        data = imu.read_data(timeout=_READ_TIMEOUT_S)
+                    except TimeoutError:
+                        pass
+                    else:
+                        self._handle_sample(_Sample(data, self.get_clock().now(), monotonic()))
+                    rclpy.spin_once(self, timeout_sec=0.0)
+            finally:
+                self.destroy_service(calibration_service)
+
+    def _calibrate_accel(
+        self, imu: SerialImu, _request: Trigger.Request, response: Trigger.Response
+    ) -> Trigger.Response:
+        try:
+            _write_unlocked(imu, cmp10a.encode_calibrate_accel())
+        except OSError as error:
+            response.success = False
+            response.message = f'Calibration serial write failed: {error}'
+            self.get_logger().error(response.message)
+        else:
+            response.success = True
+            response.message = 'Accelerometer calibration command sent'
+            self.get_logger().info(response.message)
+        return response
 
     def _confirm_frames(self, imu: SerialImu) -> bool:
         deadline = monotonic() + _PROBE_TIMEOUT_S

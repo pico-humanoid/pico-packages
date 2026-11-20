@@ -66,6 +66,11 @@ def encode_set_baudrate(baudrate: int) -> bytes:
     return _encode_register_write(0x04, _BAUD_CODES[baudrate])
 
 
+def encode_calibrate_accel() -> bytes:
+    """Encode the CALSW command to start automatic accelerometer calibration."""
+    return _encode_register_write(0x01, 0x0001)
+
+
 def encode_save() -> bytes:
     """Encode the SAVE command to persist the device's current configuration."""
     return _encode_register_write(0x00, 0x0000)
