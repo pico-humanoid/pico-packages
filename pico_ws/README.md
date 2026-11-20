@@ -1,6 +1,6 @@
 # PICO-Humanoid - ROS2
 
-`pico_ros2` 是 PICO-Humanoid 的 ROS2 包。
+`./src/pico_ros2` 是 PICO-Humanoid 的 ROS2 包。
 
 ## 获取与构建
 
