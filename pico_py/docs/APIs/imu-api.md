@@ -124,34 +124,24 @@
 ### 更多 IMU 型号开发中……
 
 
-## 通讯协议
+## 数据格式
 
-以下字节格式适用于 CMP10A。正常读取连续上报的测量值无需发送指令；只有查询指定寄存器或修改设备配置时，才需要向串口写入数据。完整定义见《CMP10A 通讯协议》的“读格式”“写格式”。
+### CMP10A IMU 数据结构定义
 
-### 读取
+- 使用 `protocol=cmp10a` 时，`imu.read_data()` 每次返回**一帧**解码后的对象。
+- 可用 `isinstance()` 判断类型，再访问对应字段，例如
+  ```python
+  data = imu.read_data()
+  if isinstance(data, cmp10a.Acceleration):
+    print(data.z_g)  # Z 轴加速度，单位是 g
+  ```
 
-设备上报帧共 11 字节：`55 TYPE D0 D1 D2 D3 D4 D5 D6 D7 SUM`。`TYPE` 是帧类型，`SUM` 是前 10 个字节之和的低 8 位。下表的 `L/H` 分别表示低字节和高字节。
+| 返回类型 | 字段 | 含义和单位 |
+| :--- | :--- | :--- |
+| `cmp10a.Acceleration` | `x_g`、`y_g`、`z_g`（`float`） | X、Y、Z 轴加速度，单位 `g`；`1 g ≈ 9.81 m/s²` |
+| `cmp10a.Acceleration` | `temperature_c`（`float`） | 温度，单位 `°C` |
+| `cmp10a.AngularVelocity` | `x_dps`、`y_dps`、`z_dps`（`float`） | 绕 X、Y、Z 轴的角速度，单位 `°/s` |
+| `cmp10a.EulerAngles` | `roll_deg`、`pitch_deg`、`yaw_deg`（`float`） | 滚转、俯仰、偏航角，单位 `°` |
+| `cmp10a.MagneticField` | `x_lsb`、`y_lsb`、`z_lsb`（`int`） | X、Y、Z 轴磁场的原始计数，换算关系大致为 `6.67e-3 µT/LSB` |
+| `cmp10a.MagneticField` | `temperature_c`（`float`） | 温度，单位 `°C` |
 
-| 场景 | 主机发送 | 设备返回（帧头和字段） | SDK 处理 |
-| :--- | :--- | :--- | :--- |
-| 读取三轴加速度和温度 | 无 | `55 51 AxL AxH AyL AyH AzL AzH TL TH SUM` | `read_data()` 返回 `Acceleration`（`g`、`°C`） |
-| 读取三轴角速度 | 无 | `55 52 WxL WxH WyL WyH WzL WzH VolL VolH SUM` | `read_data()` 返回 `AngularVelocity`（`°/s`）；SDK 不返回电压字段 |
-| 读取滚转、俯仰、偏航 | 无 | `55 53 RollL RollH PitchL PitchH YawL YawH VL VH SUM` | `read_data()` 返回 `EulerAngles`（`°`）；SDK 不返回版本号字段 |
-| 读取三轴磁场和温度 | 无 | `55 54 HxL HxH HyL HyH HzL HzH TL TH SUM` | `read_data()` 返回 `MagneticField`（原始计数、`°C`） |
-| 主动查询寄存器，例如从 `AX`（`0x34`）开始读取 | 解锁后发送 `FF AA 27 34 00` | `55 5F AXL AXH AYL AYH AZL AZH GXL GXH SUM`；从指定地址起连续返回 4 个寄存器 | 用 `read_frame()` 检查帧类型并读取原始字节；`read_data()` 对 `0x5F` 返回 `UndecodedFrame` |
-
-`read_data()` 每次只返回一帧，返回类型取决于下一帧是什么。主动查询时，连续上报帧可能先到；应跳过它们，等到 `0x5F` 应答。
-
-### 写入
-
-主机指令共 5 字节：`FF AA ADDR DATA_L DATA_H`。`ADDR` 为寄存器地址，设置值按低字节在前发送。表中的十六进制必须转换成原始 `bytes`，例如 `imu.write(bytes.fromhex("FF AA 03 07 00"))`；有对应 `encode_*()` 的指令可直接用其返回值。
-
-| 场景 | 寄存器 | 发送字节（十六进制） | SDK 用法或说明 |
-| :--- | :--- | :--- | :--- |
-| 开始配置或查询前解锁 | `KEY`（`0x69`） | `FF AA 69 88 B5` | `imu.write(cmp10a.encode_unlock())` |
-| 将设备串口改为 `115200` | `BAUD`（`0x04`） | `FF AA 04 06 00` | `imu.write(cmp10a.encode_set_baudrate(115200))`；要改回 `9600`，发送 `FF AA 04 02 00` |
-| 将设备上报频率改为 `20 Hz` | `RRATE`（`0x03`） | `FF AA 03 07 00` | 用 `bytes.fromhex()`；`5 Hz`、`10 Hz` 分别把 `07` 换成 `05`、`06`。这与示例的 `--print-hz` 不同 |
-| 只上报加速度、角速度、欧拉角 | `RSW`（`0x02`） | `FF AA 02 0E 00` | 用 `bytes.fromhex()`；`0E` 打开第 1、2、3 位。还要磁场则换成 `1E`（再打开第 4 位） |
-| 保存配置，让断电后仍生效 | `SAVE`（`0x00`） | `FF AA 00 00 00` | `imu.write(cmp10a.encode_save())` |
-
-改配置按 **解锁 → 写设置 → 保存** 操作，解锁后 10 秒内完成。改 `BAUD` 时，先用设备原来的波特率发送设置；发送保存指令时，主机必须使用设备当时实际生效的波特率。写入成功只代表主机提交了字节，应通过收帧验证设备是否已经应用设置。
