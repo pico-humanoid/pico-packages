@@ -7,7 +7,7 @@ from time import monotonic
 from types import TracebackType
 from typing import Generic, TypeVar
 
-from serial import Serial
+from serial import Serial, SerialException
 
 from .protocol import ImuProtocol
 
@@ -35,7 +35,9 @@ class Imu(Generic[_MeasurementT]):
         if self._serial is not None:
             return True
 
-        self._serial = Serial(port=self._port, baudrate=self._baudrate, timeout=1.0)
+        self._serial = Serial(
+            port=self._port, baudrate=self._baudrate, timeout=1.0, write_timeout=1.0
+        )
         return True
 
     def read_frame(self, timeout: float = 1.0) -> bytes:
@@ -70,6 +72,17 @@ class Imu(Generic[_MeasurementT]):
     def read_data(self, timeout: float = 1.0) -> _MeasurementT:
         """Read and decode one frame."""
         return self._protocol.decode_frame(self.read_frame(timeout))
+
+    def write(self, data: bytes) -> None:
+        """Write raw bytes to the open serial port without waiting for a reply."""
+        connection = self._serial
+        if connection is None:
+            raise RuntimeError("call connect() before writing to the IMU")
+        if not isinstance(data, bytes):
+            raise TypeError("data must be bytes")
+        written = connection.write(data)
+        if written != len(data):
+            raise SerialException(f"wrote {written} of {len(data)} bytes to {self._port}")
 
     def close(self) -> None:
         """Close the serial port and discard buffered data."""

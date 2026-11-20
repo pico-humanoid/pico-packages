@@ -1,11 +1,12 @@
-"""Frame validation and decoding for the CMP10A serial protocol."""
+"""Frame validation, decoding and command encoding for the CMP10A serial protocol."""
 
 from dataclasses import dataclass
-from struct import unpack_from
+from struct import pack, unpack_from
 
 FRAME_SIZE = 11
 _HEADER = b"\x55"
 _FRAME_TYPES = frozenset(range(0x50, 0x5B)) | {0x5F}
+_BAUD_CODES = {4800: 1, 9600: 2, 19200: 3, 38400: 4, 57600: 5, 115200: 6, 230400: 7}
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +48,27 @@ class UndecodedFrame:
 
 
 Measurement = Acceleration | AngularVelocity | EulerAngles | MagneticField | UndecodedFrame
+
+
+def _encode_register_write(address: int, value: int) -> bytes:
+    return b"\xFF\xAA" + pack("<BH", address, value)
+
+
+def encode_unlock() -> bytes:
+    """Encode the KEY command to unlock the device's configuration registers."""
+    return _encode_register_write(0x69, 0xB588)
+
+
+def encode_set_baudrate(baudrate: int) -> bytes:
+    """Encode a BAUD command for a rate supported by the CMP10A."""
+    if type(baudrate) is not int or baudrate not in _BAUD_CODES:
+        raise ValueError(f"unsupported CMP10A baud rate: {baudrate!r}")
+    return _encode_register_write(0x04, _BAUD_CODES[baudrate])
+
+
+def encode_save() -> bytes:
+    """Encode the SAVE command to persist the device's current configuration."""
+    return _encode_register_write(0x00, 0x0000)
 
 
 def _frame_error(frame: bytes) -> str | None:

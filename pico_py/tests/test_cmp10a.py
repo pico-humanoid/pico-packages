@@ -11,6 +11,24 @@ MAG = bytes.fromhex("55 54 EC 0F F3 12 72 EA 00 00 05")
 
 
 class ProtocolTests(TestCase):
+    def test_configuration_commands_match_the_wire_protocol(self):
+        self.assertEqual(cmp10a.encode_unlock(), bytes.fromhex("FF AA 69 88 B5"))
+        self.assertEqual(cmp10a.encode_save(), bytes.fromhex("FF AA 00 00 00"))
+        for baudrate, command in (
+            (4800, "FF AA 04 01 00"),
+            (9600, "FF AA 04 02 00"),
+            (19200, "FF AA 04 03 00"),
+            (38400, "FF AA 04 04 00"),
+            (57600, "FF AA 04 05 00"),
+            (115200, "FF AA 04 06 00"),
+            (230400, "FF AA 04 07 00"),
+        ):
+            with self.subTest(baudrate=baudrate):
+                self.assertEqual(cmp10a.encode_set_baudrate(baudrate), bytes.fromhex(command))
+        for baudrate in (0, 100000, 460800, 921600, 9600.0, "9600", True):
+            with self.subTest(baudrate=baudrate), self.assertRaises(ValueError):
+                cmp10a.encode_set_baudrate(baudrate)
+
     def test_decode_captured_measurements(self):
         acc = cmp10a.decode_frame(ACC)
         self.assertIsInstance(acc, cmp10a.Acceleration)
