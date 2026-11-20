@@ -8,11 +8,11 @@
     ```bash
     git clone https://github.com/pico-humanoid/pico-packages.git
     ```
-  其中的 `pico_ros2/` 目录即为 ROS2 程序包。
+  其中的 `src/` 目录即包含了各类针对 PICO-Humanoid的 ROS2 程序包。
 
-- 以 ROS2 工作空间 `pico_ws` 为例，将 `pico_ros2` 置于 `pico_ws/src/` 下，并使用 `colcon` 构建（在工作空间目录下，且 ROS2 环境 `setup.bash` 已通过 `source` 命令配置）：
+- 将软件包中的 `src/` 置于本机工作空间，并使用 `colcon` 构建（在工作空间目录下，且 ROS2 环境 `setup.bash` 已通过 `source` 命令配置）：
   ```bash
-  colcon build --packages-select pico_ros2
+  colcon build
   ```
 
 ## 启动与使用
@@ -36,3 +36,6 @@
       source ~/pico_ws/install/local_setup.bash
       ```
       也可选择将上述指令写入 `.bashrc`。
+
+- **各 ROS2 包使用说明导航：**
+  - 底层驱动包：[pico_ros2](./docs/pico_ros2/overview.md) - 提供了 PICO-Humanoid 的底层操控接口
